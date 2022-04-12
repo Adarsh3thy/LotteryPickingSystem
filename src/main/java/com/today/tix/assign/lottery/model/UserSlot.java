@@ -1,12 +1,8 @@
 package com.today.tix.assign.lottery.model;
 
-import java.io.Serializable;
-import java.util.Set;
-
 import javax.persistence.Column;
 import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
-import javax.persistence.Id;
 import javax.persistence.Table;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
@@ -31,5 +27,8 @@ public class UserSlot {
 	
 	@Column(name="STATUS")
 	String status;
+	
+	@Column(name="GUEST_COUNT")
+	Integer guestCount;
 
 }

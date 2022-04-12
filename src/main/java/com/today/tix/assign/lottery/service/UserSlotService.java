@@ -1,20 +1,12 @@
 package com.today.tix.assign.lottery.service;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.stream.Collectors;
+
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.today.tix.assign.lottery.model.Slot;
-import com.today.tix.assign.lottery.model.User;
 import com.today.tix.assign.lottery.model.UserSlot;
 import com.today.tix.assign.lottery.model.UserSlotIdentity;
-import com.today.tix.assign.lottery.repository.SlotRepository;
 import com.today.tix.assign.lottery.repository.UserSlotRepository;
 
 @Service

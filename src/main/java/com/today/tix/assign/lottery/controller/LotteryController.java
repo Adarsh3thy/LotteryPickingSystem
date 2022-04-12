@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
@@ -21,7 +22,7 @@ import com.today.tix.assign.lottery.model.Show;
 import com.today.tix.assign.lottery.model.Slot;
 import com.today.tix.assign.lottery.model.User;
 import com.today.tix.assign.lottery.model.UserSlot;
-
+import com.today.tix.assign.lottery.model.UserSlotIdentity;
 import com.today.tix.assign.lottery.service.ShowService;
 import com.today.tix.assign.lottery.service.SlotService;
 import com.today.tix.assign.lottery.service.UserService;
@@ -81,38 +82,6 @@ public class LotteryController {
 		}
 	}
 	
-	
-	@RequestMapping(value = "/enterlottery/{userid}/{slotid}", method = RequestMethod.POST, consumes = "application/json")
-	@ResponseStatus(HttpStatus.CREATED)
-	public String enterLottery(@PathVariable("userid") String userId,
-			@PathVariable("slotid") String slotID
-			) {
-		try {
-		User userExists = userService.getUserByID(Long.parseLong(userId));
-		System.out.println("User :"+userExists.getFirstname());
-		Slot slotExists = slotService.getSlotByID(Long.parseLong(slotID));
-		System.out.println("Slot :"+slotExists.getShowTime());
-		
-		if (userExists == null||slotExists==null) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
-		}
-		else {
-	        Set<Slot> slots = new HashSet<Slot>();
-	        slots.add(slotExists);
-			userExists.setSlots(slots);
-			userService.saveUser(userExists);
-			UserSlot userSlot=userSlotService.getUserSlotByID(Long.parseLong(userId), Long.parseLong(slotID));
-			if(userSlot==null) {
-				throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
-			}
-			userSlotService.saveUserSlot(userSlot);
-			return "Success";
-		}
-		}catch(Exception e) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
-		}
-	}
-
 	@RequestMapping(value = "/registershow", method = RequestMethod.POST, consumes = "application/json")
 	@ResponseStatus(HttpStatus.CREATED)
 	public Long createShow(@RequestBody @Valid Show show,
@@ -134,30 +103,6 @@ public class LotteryController {
 
 	}
 	
-	@RequestMapping(value = "/drawlottery/{slotid}", method = RequestMethod.POST, consumes = "application/json")
-	@ResponseStatus(HttpStatus.OK)
-	public List<Long> drawLottery(
-			@PathVariable("slotid") String slotId) {
-		try {
-		Slot slotExists = slotService.getSlotByID(Long.parseLong(slotId));
-		
-		if (slotExists == null) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
-		}
-		 else {
-			 System.out.println("Inside drawlotter: "+slotExists.getId());
-			 return slotService.lottery(Long.parseLong(slotId));
-			 
-		
-		}
-		}catch(Exception e) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
-		}
-
-	}
-	
-	
-
 	@RequestMapping(value = "/createslot/{showid}", method = RequestMethod.POST, consumes = "application/json")
 	@ResponseStatus(HttpStatus.CREATED)
 	public Long createSlot(@RequestBody @Valid Slot slot,
@@ -165,7 +110,7 @@ public class LotteryController {
 			BindingResult bindingResult) {
 		try {
 		Show showExists = showService.getShowByID(Long.parseLong(showId));
-		if (showExists == null ||slot.getShowTime()==null) {
+		if (showExists == null ||slot.getShowTime()==null|| slot.getLotteryTickets()%slot.getTicketLimitPerson()!=0) {
 			bindingResult.rejectValue("id", "error.show",
 					"Missing data");
 		}
@@ -180,6 +125,71 @@ public class LotteryController {
 		}catch(Exception e) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
 		}
+	}
+	
+	@RequestMapping(value = "/enterlottery/{userid}/{slotid}/ticket", method = RequestMethod.POST, consumes = "application/json")
+	@ResponseStatus(HttpStatus.CREATED)
+	public String enterLottery(@PathVariable("userid") String userId,
+			@PathVariable("slotid") String slotID, @RequestParam(value="guestcount") int guestCount
+			) {
+		try {
+			System.out.println("guestCount: "+guestCount);
+		User userExists = userService.getUserByID(Long.parseLong(userId));
+		System.out.println("User :"+userExists.getFirstname());
+		Slot slotExists = slotService.getSlotByID(Long.parseLong(slotID));
+		System.out.println("Slot :"+slotExists.getShowTime());
+		
+		if (userExists == null||slotExists==null||guestCount>slotExists.getTicketLimitPerson()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+		}
+		else {
+			
+			UserSlot userSlot=new UserSlot();
+			userSlot.setGuestCount(guestCount);
+			userSlot.setUserSlotIdentity(new UserSlotIdentity(Long.parseLong(userId), Long.parseLong(slotID)));
+			userSlotService.saveUserSlot(userSlot);
+	        Set<Slot> slots = new HashSet<Slot>();
+	        slots.add(slotExists);
+			userExists.setSlots(slots);
+			userService.saveUser(userExists);
+			return "Success";
+		}
+		}catch(Exception e) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+		}
+	}
+
+
+	
+	@RequestMapping(value = "/drawlottery/{slotid}", method = RequestMethod.POST, consumes = "application/json")
+	@ResponseStatus(HttpStatus.OK)
+	public List<Long> drawLottery(
+			@PathVariable("slotid") String slotId) {
+		try {
+		Slot slotExists = slotService.getSlotByID(Long.parseLong(slotId));
+		
+		if (slotExists == null) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+		}
+		 else {
+			 System.out.println("Inside drawlotter: "+slotExists.getId());
+			 return slotService.lottery(Long.parseLong(slotId));
+
+		}
+		}catch(Exception e) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+		}
+
+	}
+
+	
+	@RequestMapping(value = "/getlotterystatus/{userid}/{slotid}", method = RequestMethod.GET, consumes = "application/json")
+	@ResponseStatus(HttpStatus.OK)
+	public String getLotteryStatus(
+			@PathVariable("userid") String userId,
+			@PathVariable("slotid") String slotId) {
+		UserSlot userslot=userSlotService.getUserSlotByID(Long.parseLong(userId), Long.parseLong(slotId));
+		return userslot.getStatus();
 	}
 	
 	
